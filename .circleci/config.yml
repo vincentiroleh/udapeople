@@ -216,10 +216,10 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup
-      - attach_workspace:
-          at: ~/
-      - restore_cache:
-          key: backend-build
+      # - attach_workspace:
+      #     at: ~/
+      # - restore_cache:
+      #     key: backend-build
       - run:
           name: Run migrations
           no_output_timeout: 20m
