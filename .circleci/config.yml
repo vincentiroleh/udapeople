@@ -10,7 +10,25 @@ commands:
           command: |
             aws cloudformation delete-stack --stack-name udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}
             aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
-            
+  revert-migrations:
+    description: Revert the last migration if successfully run in the current workflow. 
+    steps:
+      - restore_cache:
+          key: backend-build
+      - run:
+          name: Revert migrations
+          when: on_fail
+          command: |
+            # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
+            SUCCESS=`curl -H "token: f118c35e-0a0e-4b04-9e0c-3d2d8b7afb5a" --request GET https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7}`
+            echo $SUCCESS
+            if [[ $SUCCESS == 1 ]];
+            then
+              cd ~/project/backend
+              npm install
+              npm run migrations:revert #revert the successful migration
+            fi     
+
 jobs:
   build-frontend:
     docker:
@@ -136,6 +154,7 @@ jobs:
           paths:
             - project/.circleci/ansible/inventory.txt
       - destroy-environment
+  
   configure-infrastructure:
     docker:
       - image: python:3.7-alpine3.11
@@ -157,6 +176,32 @@ jobs:
             cd .circleci/ansible
             ansible-playbook -i inventory.txt configure-server.yml
       - destroy-environment 
+  
+  run-migrations:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          key: backend-build
+      - run:
+          name: Run migrations
+          command: |
+            cd backend
+            npm install
+            npm run migrations > migrations_dump.txt
+      - run:
+          name: Send migration results to memstash
+          command: |
+            if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
+            then
+              curl -H "Content-Type: text/plain" -H "token: f118c35e-0a0e-4b04-9e0c-3d2d8b7afb5a" --request PUT --data "1" https://api.memstash.io/values/migration_${CIRCLE_WORKFLOW_ID:0:7}
+            fi
+      - revert-migrations
+      - destroy-environment 
+
 
 workflows:
   default:
@@ -178,3 +223,5 @@ workflows:
               only: ["main"]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
