@@ -230,6 +230,8 @@ jobs:
           no_output_timeout: 20m
           working_directory: ./backend
           command: |
+            npm i
+            sudo npm install pm2 -g
             echo ENVIRONMENT=production > ".env"
             echo TYPEORM_CONNECTION=postgres >> ".env"
             echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> ".env"
@@ -242,10 +244,7 @@ jobs:
             echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> ".env"
             echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> ".env"
 
-            sudo npm install
-            npm audit fix --audit-level=critical --force
-
-            sudo npm run migrations > migration.log
+            npm run migrations > migration.log
             cat migration.log
             migration_status=$(cat migration.log | grep -c "has been executed successfully")
             if [ $migration_status > 0 ]; then exit 0; else exit 1; fi;
