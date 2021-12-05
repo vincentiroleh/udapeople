@@ -303,28 +303,31 @@ jobs:
           fingerprints: ["04:2e:5a:b5:ea:a0:9c:d1:2a:56:8f:c4:8d:1e:60:6a"]
       - attach_workspace:
           at: ~/
-      # - attach_workspace:
-      #     at: /tmp/workspace
-      - restore_cache:
-          key: backend-build
       - run:
           name: Install dependencies
           command: |
-            apk add --update ansible openssh-client tar gzip nodejs npm
+            apk add --update ansible tar gzip nodejs npm
+      - run:
+          name: create .env files
+          command: |
+            echo ENVIROMENT=production > "backend/.env"
+            echo NODE_ENV=production > "backend/.env"
+            echo TYPEORM_CONNECTION=postgres >> "backend/.env"
+            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> "backend/.env"
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> "backend/.env"
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> "backend/.env"
+            echo TYPEORM_HOST=$TYPEORM_HOST >> "backend/.env"
+            echo TYPEORM_PORT=$TYPEORM_PORT >> "backend/.env"
+            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> "backend/.env"
+            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> "backend/.env"
+            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> "backend/.env"
       - run:
           name: Deploy backend
           command: |
-            cd backend
-            npm i
-            npm run build
-            cd ..
-            # Zip the directory
             tar -C backend -czvf artifact.tar.gz .
             cd .circleci/ansible
-            echo "Contents  of the inventory.txt file is -------"
-            cat inventory.txt
-            export ANSIBLE_HOST_KEY_CHECKING=False
             ansible-playbook -i inventory.txt deploy-backend.yml
+          no_output_timeout: 30m
       - run:
           name: Install AWS CLI for rollback
           when: on_fail
