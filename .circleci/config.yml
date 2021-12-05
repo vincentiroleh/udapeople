@@ -303,8 +303,8 @@ jobs:
           fingerprints: ["04:2e:5a:b5:ea:a0:9c:d1:2a:56:8f:c4:8d:1e:60:6a"]
       - attach_workspace:
           at: ~/
-      - attach_workspace:
-          at: /tmp/workspace
+      # - attach_workspace:
+      #     at: /tmp/workspace
       - restore_cache:
           key: backend-build
       - run:
