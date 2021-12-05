@@ -1,17 +1,30 @@
+- name: Create app dir
+  become: yes
+  file:
+    path: /home/ubuntu/app
+    state: directory
+
 - name: Copy backend files
-  become: true
+  become: yes
+  unarchive:
+    src: /tmp/workspace/backend.tar.gz
+    dest: /home/ubuntu/app/
+    owner: ubuntu
+
+- name: "Copy package.json files"
+  become: yes
   copy:
-    src: /home/backend.tar.gz
-    dest: /home/ubuntu/backend.tar.gz
+    src: /tmp/workspace/package.json
+    dest: /home/ubuntu/app/
+    owner: ubuntu
+
+- name: "NPM Install"
+  shell:
+    cmd: npm install --production
+    chdir: /home/ubuntu/app
 
 - name: Start PM2
+  become: yes
   shell: |
-    cd /home/ubuntu/
-    tar xzvf backend.tar.gz
-    mv home/circleci/project/backend .
-    cd backend
-    sudo npm install -g npm@latest
-    sudo npm install -g webpack-dev-server
-    sudo npm install
-    sudo npm run build
-    sudo pm2 start npm --name backend -- start
+    cd /home/ubuntu/app
+    pm2 start main.js --name app
