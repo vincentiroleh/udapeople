@@ -26,31 +26,35 @@
     dest: /home/ubuntu/app/
     owner: ubuntu
 
-- name: "Copy package.json to EC2"
-  become: yes
-  copy:
-    src: /root/project/package.json
-    dest: /home/ubuntu/app/
-    owner: ubuntu
-
 - name: "NPM Install"
   shell:
     cmd: npm install --production
     chdir: /home/ubuntu/app
 
-- name: "Start backend with pm2"
+- name: "install pm2"
   become: yes
-  shell: |
-    cd /home/ubuntu/app
-    pm2 start main.js --name app
+  npm:
+    name: pm2
+    global: yes
+    production: yes
+    state: present
+
+- name: "Start backend with pm2"
+  become: true
+  command: 
+    pm2 start npm --name app -- run start
+  args:
+    chdir: /home/ubuntu/backend
+  
   environment:
     ENVIRONMENT: production
+    NODE_ENV: production
     TYPEORM_CONNECTION: "{{ lookup('env', 'TYPEORM_CONNECTION') }}"
-    TYPEORM_MIGRATIONS_DIR: "./migrations"
-    TYPEORM_MIGRATIONS: "./migrations/*.js"
-    TYPEORM_ENTITIES: "./modules/domain/**/*.entity.js"
+    TYPEORM_MIGRATIONS_DIR: "{{ lookup('env','TYPEORM_MIGRATIONS_DIR') }}"
+    TYPEORM_MIGRATIONS: "{{ lookup('env','TYPEORM_MIGRATIONS') }}"
+    TYPEORM_ENTITIES: "{{ lookup('env','TYPEORM_ENTITIES') }}"
     TYPEORM_HOST: "{{ lookup('env', 'TYPEORM_HOST') }}"
     TYPEORM_PORT: "{{ lookup('env', 'TYPEORM_PORT') }}"
     TYPEORM_USERNAME: "{{ lookup('env', 'TYPEORM_USERNAME') }}"
     TYPEORM_PASSWORD: "{{ lookup('env', 'TYPEORM_PASSWORD') }}"
-    TYPEORM_DATABASE: "{{ lookup('env', 'TYPEORM_DATABASE') }}"
+    TYPEORM_DATABASE: "{{ lookup('env', 'TYPEORM_DATABASE') }}" 
