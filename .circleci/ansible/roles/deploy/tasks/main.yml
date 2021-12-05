@@ -61,11 +61,14 @@
   args:
     chdir: /home/ubuntu/backend
 
-- name: "Executing node"
+- name: "start backend with pm2"
   become: true
-  command: pm2 start npm --name backend -- run start
-  args:
-    chdir: /home/ubuntu/backend
+  shell: |
+    cd /home/ubuntu/backend
+    pm2 start main.js --name backend
+  # command: pm2 start npm --name backend -- run start
+  # args:
+  #   chdir: /home/ubuntu/backend
 
   environment:
     ENVIRONMENT: production
