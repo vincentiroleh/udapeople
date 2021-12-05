@@ -1,35 +1,24 @@
 ---
 - name: "Update apt packages"
-  become: true
+  become: yes
   apt:
     update_cache: "yes"
 
 - name: "Upgrade apt packages"
-  become: true
+  become: yes
   apt:
     upgrade: "yes"
 
+- name: remove dependencies that are no longer required
+  become: yes
+  apt:
+    autoremove: yes
+
 - name: "install dependencies"
-  become: true
+  become: yes
   apt:
     name: ["nodejs", "npm"]
     update_cache: "yes"
-
-- name: Creates directory
-  file:
-    path: /home/ubuntu/app
-    state: directory
-
-- name: Transfer backend files to cloud server
-  copy:
-    src: /root/project/backend/
-    dest: /home/ubuntu/app/
-    owner: ubuntu
-
-- name: "NPM Install"
-  shell:
-    cmd: npm install --production
-    chdir: /home/ubuntu/app
 
 - name: "install pm2"
   become: yes
@@ -39,12 +28,26 @@
     production: yes
     state: present
 
-- name: "Start backend with pm2"
-  become: true
-  command: 
-    pm2 start npm --name app -- run start
-  args:
-    chdir: /home/ubuntu/backend
+- name: Creates directory
+  file:
+    path: ~/app
+    state: directory
+
+- name: Transfer backend files to cloud server
+  copy:
+    src: /root/project/backend/
+    dest: ~/app/
+    owner: ubuntu
+
+- name: "NPM Install"
+  shell:
+    cmd: npm install --production
+    chdir: ~/app
+
+
+- name: "Executing node"
+  shell: | 
+    pm2 start ~/app/main.js -f
   
   environment:
     ENVIRONMENT: production
