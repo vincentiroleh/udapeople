@@ -26,6 +26,13 @@
     dest: /home/ubuntu/app/
     owner: ubuntu
 
+- name: "Copy package.json to EC2"
+  become: yes
+  copy:
+    src: /root/project/package.json
+    dest: /home/ubuntu/app/
+    owner: ubuntu
+
 - name: "NPM Install"
   shell:
     cmd: npm install --production
