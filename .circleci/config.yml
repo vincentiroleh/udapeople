@@ -303,24 +303,26 @@ jobs:
           fingerprints: ["04:2e:5a:b5:ea:a0:9c:d1:2a:56:8f:c4:8d:1e:60:6a"]
       - attach_workspace:
           at: ~/
+      - restore_cache:
+          key: backend-build
       - run:
           name: Install dependencies
           command: |
             apk add --update ansible openssh-client tar gzip nodejs npm
-      - restore_cache:
-          keys: ["backend-dist"]
       - run:
           name: Deploy backend
           command: |
-            cd /home
-            tar czf backend.tar.gz -P /home/circleci/project/backend/dist
-      - run:
-          name: Deploy backend 2
-          command: |
+            cd backend
+            npm i
+            npm run build
+            cd ..
+            # Zip the directory
+            tar -C backend -czvf artifact.tar.gz .
+            cd .circleci/ansible
+            echo "Contents  of the inventory.txt file is -------"
+            cat inventory.txt
             export ANSIBLE_HOST_KEY_CHECKING=False
-            ansible-playbook \
-              -i .circleci/ansible/inventory.txt \
-              .circleci/ansible/deploy-backend.yml
+            ansible-playbook -i inventory.txt deploy-backend.yml
       - run:
           name: Install AWS CLI for rollback
           when: on_fail
