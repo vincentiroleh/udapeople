@@ -17,66 +17,31 @@
 
 - name: Creates directory
   file:
-    path: /home/ubuntu/backend
+    path: /home/ubuntu/app
     state: directory
 
 - name: Transfer backend files to cloud server
   copy:
-    src: /root/project/backend
-    dest: /home/ubuntu
+    src: /root/project/backend/
+    dest: /home/ubuntu/app/
+    owner: ubuntu
 
-- name: make sure the latest npm is installed
-  become: true
-  command: npm install -g n
-  args:
-    chdir: /home/ubuntu/backend
+- name: "NPM Install"
+  shell:
+    cmd: npm install --production
+    chdir: /home/ubuntu/app
 
-- name: "install pm2"
+- name: "Start backend with pm2"
   become: yes
-  npm:
-    name: pm2
-    global: yes
-    production: yes
-    state: present
-
-- name: "install typescript"
-  become: yes
-  npm:
-    name: typescript
-    global: yes
-    production: yes
-    state: present
-
-- name: " update dependencies"
-  become: true
   shell: |
-    cd /home/ubuntu/backend
-    curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-    apt-get install -y nodejs  
-    npm install -g n
-    npm install
-- name: "build package"
-  become: true
-  command: npm run build
-  args:
-    chdir: /home/ubuntu/backend
-
-- name: "start backend with pm2"
-  become: true
-  shell: |
-    cd /home/ubuntu/backend
-    pm2 start main.js --name backend
-  # command: pm2 start npm --name backend -- run start
-  # args:
-  #   chdir: /home/ubuntu/backend
-
+    cd /home/ubuntu/app
+    pm2 start main.js --name app
   environment:
     ENVIRONMENT: production
-    NODE_ENV: production
     TYPEORM_CONNECTION: "{{ lookup('env', 'TYPEORM_CONNECTION') }}"
-    TYPEORM_MIGRATIONS_DIR: "{{ lookup('env','TYPEORM_MIGRATIONS_DIR') }}"
-    TYPEORM_MIGRATIONS: "{{ lookup('env','TYPEORM_MIGRATIONS') }}"
-    TYPEORM_ENTITIES: "{{ lookup('env','TYPEORM_ENTITIES') }}"
+    TYPEORM_MIGRATIONS_DIR: "./migrations"
+    TYPEORM_MIGRATIONS: "./migrations/*.js"
+    TYPEORM_ENTITIES: "./modules/domain/**/*.entity.js"
     TYPEORM_HOST: "{{ lookup('env', 'TYPEORM_HOST') }}"
     TYPEORM_PORT: "{{ lookup('env', 'TYPEORM_PORT') }}"
     TYPEORM_USERNAME: "{{ lookup('env', 'TYPEORM_USERNAME') }}"
