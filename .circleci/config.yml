@@ -351,12 +351,16 @@ jobs:
           name: Backend smoke test.
           command: |
             # your code here
-            export BACKEND_IP=$(sed -n 2p .circleci/ansible/inventory.txt)
-            export API_URL="http://${BACKEND_IP}:3030/api/status"
-            echo "Api URL ${API_URL}"
-            if (curl -s ${API_URL} | grep ok); # test if backend is running should return json with status ok
+            export BACKEND_IP=$(aws ec2 describe-instances --region us-east-1  \
+                --filters "Name=tag:Name, Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+                --query "Reservations[].Instances[*].PublicIpAddress" \
+                --output text)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "${API_URL}"
+            curl "${API_URL}/api/status"
+            if curl "${API_URL}/api/status" | grep "ok"
             then
-              return 0 
+              return 0
             else
               return 1
             fi
