@@ -348,20 +348,18 @@ jobs:
             pip3 install awscli
             apk add --update tar gzip curl nodejs npm
       - run:
-          name: Get backend url
-          command: |
-            export BACKEND_IP=$(sed -n 2p .circleci/ansible/inventory.txt)
-            echo ${BACKEND_IP}
-      - run:
           name: Backend smoke test.
           command: |
-            echo ${BACKEND_IP}
-            if curl "http//${BACKEND_IP}:3030/api/status" | grep "ok"
-            then
-              return 0
-            else
-              return 1
-            fi
+             # your code here
+              export BACKEND_IP=$(awk "NR==2" ~/project/.circleci/ansible/inventory.txt)
+              export API_URL="http://${BACKEND_IP}:3030/api/status"
+              echo "Api URL ${API_URL}"
+              if (curl -s ${API_URL} | grep ok); # test if backend is running should return json with status ok
+              then
+               return 0 
+              else
+               return 1
+              fi
       - run:
           name: Frontend smoke test.
           command: |
