@@ -233,16 +233,25 @@ jobs:
 
   deploy-frontend:
     docker:
-      - image: circleci/node:13.8.0
+      - image: amazon/aws-cli
     steps:
       - checkout
-      - restore_cache:
-          keys: [frontend-build]
       - run:
           name: Install dependencies
           command: |
-            cd frontend
-            npm install
+            # your code here TODO node version should be consistent accross workflow
+            curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+            yum install -y nodejs
+            yum install -y tar
+            yum install -y curl
+            yum install -y gzip
+      - restore_cache:
+          keys: [frontend-build]
+       #cache is left in /home/circleci/ this step copies folders to home directory
+      - run:
+          name: Moves cache to current working directory
+          command: |
+            cp -r /home/circleci/* ~/
       - attach_workspace:
           at: ~/
       - run:
