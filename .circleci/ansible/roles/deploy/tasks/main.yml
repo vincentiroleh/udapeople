@@ -1,63 +1,28 @@
 ---
-- name: "Update apt packages"
+- name: "Copy dist backend directory to EC2 server"
   become: yes
-  apt:
-    update_cache: "yes"
-
-- name: "Upgrade apt packages"
-  become: yes
-  apt:
-    upgrade: "yes"
-
-- name: remove dependencies that are no longer required
-  become: yes
-  apt:
-    autoremove: yes
-
-- name: "install dependencies"
-  become: yes
-  apt:
-    name: ["nodejs", "npm"]
-    update_cache: "yes"
-
-- name: "install pm2"
-  become: yes
-  npm:
-    name: pm2
-    global: yes
-    production: yes
-    state: present
-
-- name: Creates directory
-  file:
-    path: ~/app
-    state: directory
-
-- name: Transfer backend files to cloud server
   copy:
-    src: /root/project/backend/
-    dest: ~/app/
-    owner: ubuntu
-
-- name: "NPM Install"
-  shell:
-    cmd: npm install --production
-    chdir: ~/app
-
-
-- name: "Executing node"
-  shell: | 
-    pm2 start ~/app/main.js -f
-  
-  environment:
-    ENVIRONMENT: production
-    NODE_ENV: production
-    TYPEORM_CONNECTION: "{{ lookup('env', 'TYPEORM_CONNECTION') }}"
-    TYPEORM_MIGRATIONS_DIR: "{{ lookup('env','TYPEORM_MIGRATIONS_DIR') }}"
-    TYPEORM_MIGRATIONS: "{{ lookup('env','TYPEORM_MIGRATIONS') }}"
-    TYPEORM_ENTITIES: "{{ lookup('env','TYPEORM_ENTITIES') }}"
-    TYPEORM_HOST: "{{ lookup('env', 'TYPEORM_HOST') }}"
-    TYPEORM_PORT: "{{ lookup('env', 'TYPEORM_PORT') }}"
-    TYPEORM_USERNAME: "{{ lookup('env', 'TYPEORM_USERNAME') }}"
-    TYPEORM_PASSWORD: "{{ lookup('env', 'TYPEORM_PASSWORD') }}"
-    TYPEORM_DATABASE: "{{ lookup('env', 'TYPEORM_DATABASE') }}" 
+    src: ~/project/artifact.tar.gz
+    dest: /home/ubuntu/artifact.tar.gz
+- name: "Install Ansible dependencies"
+  become: true
+  apt:
+    name: ["nodejs", "npm", "python3", "tar", "gzip", "git"]
+    state: latest
+    update_cache: yes
+- name: "Create directory for backend"
+  file:
+    path: /home/ubuntu/backend/
+    state: directory
+- name: prepare binaries
+  become: true
+  shell: |
+    cd /home/ubuntu
+    tar xvzf artifact.tar.gz -C .
+- name: start server
+  become: true
+  shell: |
+    cd /home/ubuntu
+    npm install
+    pm2 stop default
+    pm2 start npm --name backend -- start
