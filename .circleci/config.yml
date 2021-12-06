@@ -311,22 +311,21 @@ jobs:
       - image: python:3.7-alpine3.11
     steps:
       - checkout
+      - aws-cli/setup
       - add_ssh_keys:
           fingerprints: ["64:ce:5f:bb:fc:c2:4a:1a:53:08:e0:47:f0:80:4d:1f"]
       - attach_workspace:
           at: ~/
-      - restore_cache:
-          key: backend-build
       - run:
           name: Install dependencies
           command: |
             apk add --update ansible openssh-client tar gzip curl nodejs npm
-            pip install awscli
       - run:
           name: Deploy backend
           no_output_timeout: 20m
           command: |
             # your code here
+            ls
             cd backend
             npm i
             npm run build
