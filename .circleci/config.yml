@@ -340,17 +340,6 @@ jobs:
       - attach_workspace:
           at: ~/
       - run:
-          name: Frontend smoke test.
-          command: |
-            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.website-us-east-1.amazonaws.com/#/employees"            
-            echo "Front end URL ${URL}"
-            if curl -s "${URL}" | grep "Welcome"
-            then
-              return 0
-            else
-              return 1
-            fi
-      - run:
           name: Backend smoke test.
           command: |
               # your code here
@@ -368,6 +357,17 @@ jobs:
               #   return 1
               # fi
      
+      - run:
+          name: Frontend smoke test.
+          command: |
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.website-us-east-1.amazonaws.com/index.html"            
+            echo "Front end URL ${URL}"
+            if curl -s "${URL}" | grep "Welcome"
+            then
+              return 0
+            else
+              return 1
+            fi
       - revert-migrations
       - destroy-environment
 
