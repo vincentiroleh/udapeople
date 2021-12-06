@@ -74,8 +74,12 @@ jobs:
             npm install
             npm run build
       - save_cache:
-          paths: [backend/node_modules]
+          paths: [backend/node_modules,backend/package-lock.json]
           key: backend-build
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/backend/dist/
   
   test-frontend:
     docker:
@@ -138,7 +142,8 @@ jobs:
       - checkout
       - run: 
           name: Install tar and gzip
-          command: yum -y install tar gzip jq git
+          command: | 
+            yum -y install tar gzip
       - run:
           name: Ensure back-end infrastructure exists
           command: |
@@ -161,7 +166,7 @@ jobs:
             aws ec2 describe-instances \
               --query 'Reservations[*].Instances[*].PublicIpAddress' \
               --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --output text >> .circleci/ansible/inventory.txt
+              --output text >> ~/project/.circleci/ansible/inventory.txt
             
       - persist_to_workspace:
           root: ~/
@@ -174,37 +179,26 @@ jobs:
       - image: python:3.7-alpine3.11
     steps:
       - checkout
+      - aws-cli/setup
       - add_ssh_keys:
           fingerprints:
             - "64:ce:5f:bb:fc:c2:4a:1a:53:08:e0:47:f0:80:4d:1f"
-      - attach_workspace:
-          at: ~/
       - run:
           name: Install dependencies
           command: |
-            apk add --update ansible openssh-client tar gzip curl nodejs npm
-            pip install awscli
-            cat .circleci/ansible/inventory.txt
+            apk add --no-cache tar gzip
+            apk add --update ansible
+            apk add --update curl
+            apk add --update jq
+      - attach_workspace:
+          at: ~/
       - run:
           name: Configure server
           command: |
-            cd backend
-            echo ENVIRONMENT=production > ".env"
-            echo TYPEORM_CONNECTION=postgres >> ".env"
-            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> ".env"
-            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> ".env"
-            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> ".env"
-            echo NODE_ENV=production >> ".env"
-            echo TYPEORM_HOST=$TYPEORM_HOST >> ".env"
-            echo TYPEORM_PORT=$TYPEORM_PORT >> ".env"
-            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> ".env"
-            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> ".env"
-            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> ".env"
-            cd ..
+            # Your code here
             export ANSIBLE_HOST_KEY_CHECKING=False
-            ansible-playbook \
-              -i .circleci/ansible/inventory.txt \
-              .circleci/ansible/configure-server.yml
+            cd ~/project/.circleci/ansible/
+            ansible-playbook -i inventory.txt configure-server.yml
       - run:
           name: Install AWS cli for rollback
           when: on_fail
@@ -218,28 +212,12 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup
-      - attach_workspace:
-          at: ~/
       - restore_cache:
           key: backend-build
       - run:
           name: Run migrations
-          no_output_timeout: 20m
-          working_directory: ./backend
           command: |
-            npm i
-            sudo npm install pm2 -g
-            echo ENVIRONMENT=production > ".env"
-            echo TYPEORM_CONNECTION=postgres >> ".env"
-            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> ".env"
-            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> ".env"
-            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> ".env"
-            echo NODE_ENV=production >> ".env"
-            echo TYPEORM_HOST=$TYPEORM_HOST >> ".env"
-            echo TYPEORM_PORT=$TYPEORM_PORT >> ".env"
-            echo TYPEORM_USERNAME=$TYPEORM_USERNAME >> ".env"
-            echo TYPEORM_PASSWORD=$TYPEORM_PASSWORD >> ".env"
-            echo TYPEORM_DATABASE=$TYPEORM_DATABASE >> ".env"
+            cd ./backend
             npm run migrations > migration.log
             cat migration.log
             migration_succesful=$(cat migration.log | grep -c "has been executed successfully")
@@ -259,50 +237,39 @@ jobs:
       - image: circleci/node:13.8.0
     steps:
       - checkout
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Install AWS CLI dependencies
-          working_directory: /tmp
-          command: |
-            sudo apt-get update && sudo apt-get install -yy less
-            sudo apt-get install unzip -y
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
+      - restore_cache:
+          keys: [frontend-build]
       - run:
           name: Install dependencies
           command: |
             cd frontend
             npm install
       - run:
+          name: Moves cache to current working directory
+          command: |
+            cp -r /home/circleci/* ~/
+
+      - attach_workspace:
+          at: ~/
+      - run:
           name: Get backend url
           command: |
             # your code here
-            touch ".env"
-            BACKEND_ip=$(aws ec2 describe-instances --region eu-central-1  \
-                --filters "Name=tag:Name, Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-                --query "Reservations[].Instances[*].PublicIpAddress" \
-                --output text)            
-            export API_URL="${BACKEND_ip}:3030"
-            
-            echo "API_URL=${API_URL}" >> .env
-            echo "${API_URL}"
-            echo ${CIRCLE_WORKFLOW_ID:0:7}
-            echo "udapeople-${CIRCLE_WORKFLOW_ID:0:7}"
-            export API_URL="http://${BACKEND_ip}:3030"
-            echo API_URL="${API_URL}" >> frontend/.env
-            cat frontend/.env
+            # Get second line from inventory where the backend ip 
+            export BACKEND_IP=$(awk "NR==2" ~/project/.circleci/ansible/inventory.txt)
+            echo "Back end ip is ${BACKEND_IP}"
+            echo 'export API_URL="http://${BACKEND_IP}:3030"' >> $BASH_ENV
       - run:
           name: Deploy frontend objects
           command: |
-            echo ENVIRONMENT=production >> frontend/.env
-            echo NODE_ENV=production >> frontend/.env
-            cd frontend
-            npm install
+            # your code here
+            export BACKEND_IP=$(awk "NR==2" ~/project/.circleci/ansible/inventory.txt)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL ${API_URL}"
+            cd ./frontend
             npm run build
-            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
-            aws s3 cp dist "s3://udapeople-<< pipeline.parameters.workflow-id >>" --recursive
+            cd ./dist
+            aws s3 sync . s3://udapeople-"${CIRCLE_WORKFLOW_ID:0:7}"/ --delete
       - revert-migrations
       - destroy-environment
        
@@ -314,65 +281,76 @@ jobs:
       - aws-cli/setup
       - add_ssh_keys:
           fingerprints: ["64:ce:5f:bb:fc:c2:4a:1a:53:08:e0:47:f0:80:4d:1f"]
-      - attach_workspace:
-          at: ~/
+      - restore_cache:
+          key: backend-build
+      #cache is left in /home/circleci/ this step copies folders to home directory
+      - run:
+          name: Moves cache to current working directory
+          command: |
+            cp -r /home/circleci/* ~/
       - run:
           name: Install dependencies
           command: |
-            apk add --update ansible openssh-client tar gzip curl nodejs npm
+            # Your code here
+            apk add --no-cache tar gzip
+            apk add --update ansible
+            apk add --update curl
+            apk add --update jq
+      - attach_workspace:
+          at: ~/
       - run:
-          name: Deploy backend
-          no_output_timeout: 20m
+          name: Compress Node Modules folder for deployment
+          command:  |
+            cd ~/project/backend/
+            tar -cvzf node_modules.tar.gz ./node_modules
+      - run:
+          name: Deploy Backend
+          no_output_timeout: 30m
           command: |
-            # your code here
-            ls
-            cd backend
-            npm i
-            npm run build
-            cd ..
-            # Zip the directory
-            tar -C backend -czvf artifact.tar.gz .
-            cd .circleci/ansible
-            echo "Contents  of the inventory.txt file is -------"
-            cat inventory.txt
-            export ANSIBLE_HOST_KEY_CHECKING=False
+            cd ~/project/.circleci/ansible/
             ansible-playbook -i inventory.txt deploy-backend.yml
       - revert-migrations
       - destroy-environment
 
   smoke-test:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: alpine:latest
     steps:
       - checkout
       - run:
           name: Install dependencies
           command: |
-            pip install awscli
-            apk add --update curl nodejs npm
+            # your code here
+            apk add --update curl
+            apk add --update jq
+            apk add  --no-cache \
+                        python3 \
+                        py3-pip \
+                    && pip3 install --upgrade pip \
+                    && pip3 install \
+                        awscli \
+                    && rm -rf /var/cache/apk/*
+      - attach_workspace:
+          at: ~/
       - run:
           name: Backend smoke test.
           command: |
-            # your code here
-            export BACKEND_IP=$(aws ec2 describe-instances --region us-east-1  \
-                --filters "Name=tag:Name, Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-                --query "Reservations[].Instances[*].PublicIpAddress" \
-                --output text)
-            export API_URL="http://${BACKEND_IP}:3030"
-            echo "${API_URL}"
-            curl "${API_URL}/api/status"
-            if curl "${API_URL}/api/status" | grep "ok"
-            then
-              return 0
-            else
-              return 1
-            fi
+              # your code here
+              export BACKEND_IP=$(awk "NR==2" ~/project/.circleci/ansible/inventory.txt)
+              export API_URL="http://${BACKEND_IP}:3030/api/status"
+              echo "Api URL ${API_URL}"
+              if (curl -s ${API_URL} | grep ok); # test if backend is running should return json with status ok
+              then
+               return 0 
+              else
+               return 1
+              fi
       - run:
           name: Frontend smoke test.
           command: |
             URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.website-us-east-1.amazonaws.com/#/employees"            
-            echo ${URL} 
-            if curl -s ${URL} | grep "Welcome"
+            echo "Front end URL ${URL}"
+            if (curl -s ${URL} | grep Welcome);
             then
               return 1
             else
