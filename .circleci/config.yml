@@ -386,9 +386,7 @@ jobs:
       - run:
           name: Update cloudfront distribution
           command: |
-            export OldWorkflowID=$(aws cloudformation \ 
-              list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \ 
-              --no-paginate --output text)
+            export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" --no-paginate --output text)
             echo $OldWorkflowID >> ~/OldWorkflowID.txt
             cat ~/OldWorkflowID.txt
 
@@ -419,9 +417,7 @@ jobs:
           name: Get old stack workflow id
           command: |
             aws --version
-            export OldWorkflowID=$(aws cloudformation \ 
-              list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \ 
-              --no-paginate --output text)
+            export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" --no-paginate --output text)
             echo $OldWorkflowID >> ~/OldWorkflowID.txt
             cat ~/OldWorkflowID.txt
       - run:
@@ -435,9 +431,6 @@ jobs:
               aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
             else
               echo "---------------------------Cannot Cleanup---------------------------"
-              aws s3 rm "s3://${OldWorkflowID}" --recursive
-              aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
             fi
 
 workflows:
