@@ -341,20 +341,10 @@ jobs:
         - run:
             name: Install dependencies
             command: |
-              apk add ansible
               pip3 install awscli
-              apk add --update tar gzip curl nodejs npm
-        - run:
-            name: Frontend smoke test.
-            command: |
-              FRONTEND_URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website.us-east-1.amazonaws.com/#/employees"
-              if curl -s "${FRONTEND_URL}" | grep -o "Welcome"
-              then
-                return 0
-              else
-                return 1
-              fi
-              
+              apk add --update curl
+        - attach_workspace:
+            at: ~/
         - run:
             name: Backend smoke test.
             command: |
@@ -364,6 +354,16 @@ jobs:
               echo "${API_URL}"
               curl "${API_URL}/api/status"
               if curl "${API_URL}/api/status" | grep "ok"
+              then
+                return 0
+              else
+                return 1
+              fi
+        - run:
+            name: Frontend smoke test.
+            command: |
+              FRONTEND_URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website.us-east-1.amazonaws.com/#/employees"
+              if curl -s "${FRONTEND_URL}" | grep -o "Welcome"
               then
                 return 0
               else
