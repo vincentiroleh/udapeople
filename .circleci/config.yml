@@ -426,7 +426,7 @@ jobs:
             if [[ -n "${OldWorkflowID}" ]]  &&  [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
             then
               # Delete files from bucket
-              echo "s3://udapeople-${OldWorkflowID}"
+              echo "s3://${OldWorkflowID}"
               aws s3 rm s3://udapeople-${OldWorkflowID} --recursive
               
               # Delete front end stack
