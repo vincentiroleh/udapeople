@@ -416,28 +416,23 @@ jobs:
       - run:
           name: Remove old stacks and files
           command: |
+            export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+             --no-paginate --output text)
 
-            aws --version
-            export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" --no-paginate --output text)
-            echo "${OldWorkflowID}"
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+              --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
 
-            export STACKS=($(aws cloudformation list-stacks \
-              --query "StackSummaries[*].StackName" \
-              --stack-status-filter CREATE_COMPLETE \
-              --no-paginate --output text))
-            
-            echo "${STACKS}"
+            echo Old Workflow Id: "${OldWorkflowID}"
 
-            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            if [ ! -z "${OldWorkflowID}" ]
             then
-              echo "---------------------------Delete Confirmed---------------------------"
-              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
-              # aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-              # aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
-            else
-              echo "---------------------------Cannot Cleanup---------------------------"
+                 # your code here
+                 echo "Cleaning old stack"
+                 aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive --quiet
+                 aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+                 aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+                 echo "Finished cleaning previous stack"
             fi
-
 workflows:
   default:
     jobs:
@@ -469,4 +464,4 @@ workflows:
       # - cloudfront-update:
       #     requires: [smoke-test]
       - cleanup
-          # requires: [cloudfront-update]
+        # requires: [cloudfront-update]
