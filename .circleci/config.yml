@@ -414,25 +414,26 @@ jobs:
       - run:
           name: Remove old stacks and files
           command: |
-            export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-             --no-paginate --output text)
+            export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" --no-paginate --output text)
 
-            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
-              --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            export STACKS=($(aws cloudformation list-stacks \
+              --query "StackSummaries[*].StackName" \
+              --stack-status-filter CREATE_COMPLETE \
+              --no-paginate --output text))
 
             echo Old Workflow Id: "${OldWorkflowID}"
 
-            if [ ! -z "${OldWorkflowID}" ]
+            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
             then
-                 # your code here
-                 echo "Cleaning old stack"
-                 echo "s3://udapeople-${OldWorkflowID}"
-                 aws s3 rm "s3://${OldWorkflowID}" --recursive
-                 aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-                 aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
-
-                 echo "Finished cleaning previous stack"
+              echo "---------------------------Delete Confirmed---------------------------"
+              aws s3 rm "s3://${OldWorkflowID}" --recursive
+              aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+              echo "Finished cleaning previous stack"
+            else
+              echo "---------------------------Cannot Cleanup---------------------------"
             fi
+
 workflows:
   default:
     jobs:
@@ -463,5 +464,5 @@ workflows:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
-      - cleanup:
-          requires: [cloudfront-update]
+      # - cleanup:
+      #     requires: [cloudfront-update]
