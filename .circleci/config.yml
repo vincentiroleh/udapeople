@@ -419,8 +419,7 @@ jobs:
 
             aws --version
             export OldWorkflowID=$(aws cloudformation list-exports --query "Exports[?Name==\`WorkflowID\`].Value" --no-paginate --output text)
-            echo $OldWorkflowID >> ~/OldWorkflowID.txt
-            cat ~/OldWorkflowID.txt
+            echo "${OldWorkflowID}"
 
             export STACKS=($(aws cloudformation list-stacks \
               --query "StackSummaries[*].StackName" \
@@ -430,7 +429,7 @@ jobs:
             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
             then
               echo "---------------------------Delete Confirmed---------------------------"
-              aws s3 rm "s3://${OldWorkflowID}" --recursive
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
               # aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
               # aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
             else
