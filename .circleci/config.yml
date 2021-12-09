@@ -425,6 +425,8 @@ jobs:
               --query "StackSummaries[*].StackName" \
               --stack-status-filter CREATE_COMPLETE \
               --no-paginate --output text))
+            
+            echo "${STACKS}"
 
             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
             then
