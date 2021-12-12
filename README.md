@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/vincentiroleh/udapeople/tree/master.svg?style=svg)](https://circleci.com/gh/vincentiroleh/udapeople/tree/master)
+
 ## UdaPeople
 
 Project 3 - Cloud DevOps Engineering Udacity NanoDegree
